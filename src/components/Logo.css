@@ -1,0 +1,113 @@
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo-icon {
+  flex-shrink: 0;
+  filter: drop-shadow(0 4px 12px rgb(57, 48, 1));
+  animation: logoFloat 3s ease-in-out infinite;
+}
+
+@keyframes logoFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.logo-circle {
+  transition: transform 0.3s ease;
+}
+
+.logo-container:hover .logo-circle {
+  transform: scale(1.05);
+}
+
+.logo-arrows {
+  animation: logoRotate 8s linear infinite;
+  transform-origin: 60px 60px;
+}
+
+@keyframes logoRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.logo-center {
+  animation: logoPulse 2s ease-in-out infinite;
+}
+
+@keyframes logoPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.logo-name {
+  font-size: 1.75rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #835012 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+}
+
+.logo-subtitle {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-soft);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Tamanhos */
+.logo-small .logo-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.logo-small .logo-name {
+  font-size: 1.25rem;
+}
+
+.logo-small .logo-subtitle {
+  font-size: 0.7rem;
+}
+
+.logo-medium .logo-icon {
+  width: 60px;
+  height: 60px;
+}
+
+.logo-large .logo-icon {
+  width: 80px;
+  height: 80px;
+}
+
+.logo-large .logo-name {
+  font-size: 2.5rem;
+}
+
+.logo-large .logo-subtitle {
+  font-size: 1rem;
+}

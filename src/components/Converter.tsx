@@ -1,8 +1,14 @@
 import { useState, useCallback } from 'react'
 import { useFFmpeg, ConversionItem } from '../hooks/useFFmpeg'
+import { Logo } from './Logo'
 import './Converter.css'
 
-export function Converter() {
+interface ConverterProps {
+  converterType?: string
+  onBack?: () => void
+}
+
+export function Converter({ converterType = 'mp4-to-mp3', onBack }: ConverterProps) {
   const { load, convertBatch, loaded, loading, error } = useFFmpeg()
   const [items, setItems] = useState<ConversionItem[]>([])
   const [converting, setConverting] = useState(false)
@@ -87,7 +93,13 @@ export function Converter() {
 
   return (
     <div className="converter">
+      {onBack && (
+        <button className="btn-back" onClick={onBack} aria-label="Voltar para home">
+          ← Voltar
+        </button>
+      )}
       <header className="converter-header">
+        <Logo size="medium" showText={false} />
         <h1>MP4 → MP3</h1>
         <p>Envie um vídeo e baixe o áudio em MP3. Tudo no seu navegador.</p>
       </header>
