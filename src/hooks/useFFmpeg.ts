@@ -6,6 +6,15 @@ import { toBlobURL } from '@ffmpeg/util'
 const CORE_VERSION = '0.12.6'
 const CORE_CDN = `https://unpkg.com/@ffmpeg/core@${CORE_VERSION}/dist/esm`
 
+export interface ConversionItem {
+  id: string
+  file: File
+  status: 'pending' | 'converting' | 'completed' | 'error'
+  progress: number
+  resultBlob?: Blob
+  error?: string
+}
+
 export function useFFmpeg() {
   const [ffmpeg] = useState(() => new FFmpeg())
   const [loaded, setLoaded] = useState(false)
@@ -33,7 +42,6 @@ export function useFFmpeg() {
       const wasmURL = await withTimeout(
         toBlobURL(`${CORE_CDN}/ffmpeg-core.wasm`, 'application/wasm')
       )
-      ffmpeg.on('progress', ({ progress: p }) => setProgress(Math.round(p * 100)))
       await withTimeout(ffmpeg.load({ coreURL, wasmURL }))
       setLoaded(true)
     } catch (e) {
@@ -44,8 +52,9 @@ export function useFFmpeg() {
   }, [ffmpeg, loaded])
 
   const convertToMp3 = useCallback(
-    async (file: File): Promise<Blob> => {
+    async (file: File, onProgress?: (progress: number) => void): Promise<Blob> => {
       if (!loaded) await load()
+      if (onProgress) onProgress(0)
       setProgress(0)
       setError(null)
       const inputName = 'input.mp4'
@@ -53,6 +62,20 @@ export function useFFmpeg() {
       try {
         const data = new Uint8Array(await file.arrayBuffer())
         await ffmpeg.writeFile(inputName, data)
+        
+        // Criar handler temporário para progresso individual
+        const progressHandler = ({ progress: p }: { progress: number }) => {
+          const progressPercent = Math.round(p * 100)
+          if (onProgress) {
+            onProgress(progressPercent)
+          }
+          setProgress(progressPercent)
+        }
+        
+        // Remover qualquer handler anterior e adicionar o novo
+        ffmpeg.off('progress')
+        ffmpeg.on('progress', progressHandler)
+        
         await ffmpeg.exec([
           '-i', inputName,
           '-vn',
@@ -60,20 +83,62 @@ export function useFFmpeg() {
           '-q:a', '2',
           outputName
         ])
+        
+        // Remover handler após conversão
+        ffmpeg.off('progress', progressHandler)
+        
         const out = await ffmpeg.readFile(outputName)
         await ffmpeg.deleteFile(inputName)
         await ffmpeg.deleteFile(outputName)
-        return new Blob([out], { type: 'audio/mpeg' })
+        const blob = new Blob([out], { type: 'audio/mpeg' })
+        if (onProgress) onProgress(100)
+        return blob
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Erro na conversão'
         setError(msg)
         throw new Error(msg)
-      } finally {
-        setProgress(100)
       }
     },
     [ffmpeg, loaded, load]
   )
 
-  return { load, convertToMp3, loaded, loading, progress, error }
+  const convertBatch = useCallback(
+    async (
+      items: ConversionItem[],
+      onItemUpdate: (id: string, updates: Partial<ConversionItem>) => void
+    ): Promise<void> => {
+      if (!loaded) await load()
+      setError(null)
+
+      // Processar sequencialmente
+      for (const item of items) {
+        if (item.status === 'completed' || item.status === 'error') continue
+
+        try {
+          onItemUpdate(item.id, { status: 'converting', progress: 0 })
+          
+          const blob = await convertToMp3(item.file, (progress) => {
+            onItemUpdate(item.id, { progress })
+          })
+          
+          onItemUpdate(item.id, {
+            status: 'completed',
+            progress: 100,
+            resultBlob: blob,
+            error: undefined
+          })
+        } catch (e) {
+          const errorMsg = e instanceof Error ? e.message : 'Falha na conversão'
+          onItemUpdate(item.id, {
+            status: 'error',
+            error: errorMsg,
+            progress: 0
+          })
+        }
+      }
+    },
+    [ffmpeg, loaded, load, convertToMp3]
+  )
+
+  return { load, convertToMp3, convertBatch, loaded, loading, progress, error }
 }
